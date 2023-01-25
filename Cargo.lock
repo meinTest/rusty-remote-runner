@@ -931,6 +931,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "server"
+version = "0.1.0"
+dependencies = [
+ "actix-web",
+ "env_logger",
+ "log",
+ "serde",
+ "taumada-runner",
+ "tokio",
+ "uuid",
+]
+
+[[package]]
 name = "sha1"
 version = "0.10.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -987,14 +1000,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "taumada-runner-server"
+name = "taumada-runner"
 version = "0.1.0"
 dependencies = [
- "actix-web",
- "env_logger",
- "log",
  "serde",
- "tokio",
  "uuid",
 ]
 
