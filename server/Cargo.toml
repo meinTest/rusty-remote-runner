@@ -12,4 +12,4 @@ log = "0.4.17"
 serde = { version = "1.0.152", features = ["derive"] }
 tokio = { version = "1.24.2", features = ["process"] }
 uuid = { version = "1.2.2", features = ["v4", "fast-rng", "serde"] }
-taumada-runner = { version = "0.1", path = "../" }
+rusty-remote-runner = { version = "0.1", path = "../" }

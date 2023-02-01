@@ -1,5 +1,5 @@
 [package]
-name = "taumada-runner"
+name = "rusty-remote-runner"
 version = "0.1.0"
 edition = "2021"
 
@@ -13,3 +13,6 @@ members = [
 [dependencies]
 serde = { version = "1.0.152", features = ["derive"] }
 uuid = { version = "1.2.2", features = ["serde"] }
+
+[dev-dependencies]
+serde_json = "1.0.91"
