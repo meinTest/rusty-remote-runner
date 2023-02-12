@@ -1,7 +1,8 @@
 use actix_web::middleware::Logger;
 use actix_web::{App, HttpServer};
 
-mod runner;
+mod process;
+mod service;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -14,8 +15,9 @@ async fn main() -> std::io::Result<()> {
 
     HttpServer::new(move || {
         App::new()
-            .service(runner::run_synchronous_command)
-            .service(runner::run_synchronous_script)
+            .service(service::run_synchronous_command)
+            .service(service::run_synchronous_script)
+            .service(service::get_file)
             .wrap(Logger::default())
     })
     .bind(("127.0.0.1", 8000))?

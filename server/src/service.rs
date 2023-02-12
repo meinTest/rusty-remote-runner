@@ -1,8 +1,11 @@
+use actix_files::NamedFile;
 use rusty_remote_runner::api::*;
 
-use actix_web::{post, web, HttpResponse};
+use actix_web::{get, post, web, HttpResponse};
 use tokio::process::Command;
 use uuid::Uuid;
+
+use crate::process::{process_command, working_directory};
 
 // TODO: asynchronous & asynchrnous exclusive
 
@@ -13,6 +16,7 @@ async fn run_synchronous_command(request: web::Json<RunRequest>) -> HttpResponse
     log::info!("Running command {} (`{}`)", cmd_id, request.command);
 
     let mut command = Command::new(request.command);
+    command.current_dir(working_directory());
     command.args(request.arguments);
 
     process_command(cmd_id, command).await
@@ -26,9 +30,7 @@ async fn run_synchronous_script(
     let cmd_id = Uuid::new_v4();
     let interpreter = query.interpreter;
 
-    let mut script_path = std::env::temp_dir();
-    // FIXME: mkdir if not existing
-    script_path.push("rusty-runner");
+    let mut script_path = working_directory();
     script_path.push(format!("script_{}.{}", cmd_id, interpreter.as_extension()));
 
     let script = String::from_utf8_lossy(&body);
@@ -41,8 +43,9 @@ async fn run_synchronous_script(
             }),
         });
     }
+    // FIXME: executable flag
 
-    let command = match interpreter {
+    let mut command = match interpreter {
         #[cfg(windows)]
         RunScriptInterpreter::Bash => {
             // TODO: config for bash install path
@@ -66,39 +69,18 @@ async fn run_synchronous_script(
         }
     };
 
+    command.current_dir(working_directory());
+
     process_command(cmd_id, command).await
 }
 
-async fn process_command(cmd_id: Uuid, mut command: Command) -> HttpResponse {
-    // Just run the command.
-    // FIXME: delay running and early return
-    let result = command.output().await;
+#[get("/api/file")]
+async fn get_file(query: web::Query<GetFileQuery>) -> actix_web::Result<NamedFile> {
+    // TODO: use https://crates.io/crates/shellexpand ?
 
-    let response_json = match result {
-        Ok(out) => {
-            // FIXME: zero/one line stdout
-            // FIXME: whole command?
-            log::debug!("Command exited with code {}", out.status);
-            log::debug!("> stdout:\n{}", String::from_utf8_lossy(&out.stdout).trim());
-            log::debug!("> stderr:\n{}", String::from_utf8_lossy(&out.stderr).trim());
-            RunResponse {
-                id: cmd_id,
-                status: RunStatus::Completed(CompletionInfo {
-                    exit_code: out.status.code().unwrap_or(-1001),
-                }),
-            }
-        }
-        Err(e) => {
-            log::debug!("Command failed due to {:?}", e);
-            RunResponse {
-                id: cmd_id,
-                status: RunStatus::Failure(FailureInfo {
-                    reason: e.to_string(),
-                }),
-            }
-        }
-    };
+    let mut path = working_directory();
+    path.push(&query.path);
 
-    // Also wrap the failure into a 200 code, since it is usually due to program not found.
-    HttpResponse::Ok().json(&response_json)
+    // FIXME: is this the right way to go?
+    Ok(NamedFile::open(path)?)
 }

@@ -1,9 +1,20 @@
+//! This module defines the API for this crate and its server.
+//!
+//! ## Working with files
+//! The working directory of the executed commands is implementation defined,
+//! but the same for all methods and constant over the lifetime of the server.
+//! The path for file fetching is also relative to this directory.
+//!
+//! Best use a relative randomly named subdirectory for your file operations.
+//! E.g. `./task-9ae4ef2b9d13/your-file`
+
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-/// Used for constructing a `tokio::process::Command`.
+/// The json-body schema for `POST /api/run`.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct RunRequest {
+    /// The command as available on the path.
     pub command: String,
     /// The arguments as passed to `tokio::process::Command::args`
     ///
@@ -14,6 +25,9 @@ pub struct RunRequest {
     pub arguments: Vec<String>,
 }
 
+/// The query schema for `POST /api/runscript`.
+///
+/// The posted script will be run by the given `interpreter`.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct RunScriptQuery {
     #[serde(default)]
@@ -22,10 +36,9 @@ pub struct RunScriptQuery {
 
 /// The interpreter that the script will be called with.
 #[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum RunScriptInterpreter {
-    #[serde(rename = "bash")]
     Bash,
-    #[serde(rename = "cmd")]
     Cmd,
     #[default]
     Native,
@@ -44,7 +57,14 @@ impl RunScriptInterpreter {
     }
 }
 
-/// Describes the json response format for `/api/run` and `/api/runscript`.
+/// The query schema for `GET /api/file`.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct GetFileQuery {
+    /// The path of the file to fetch.
+    pub path: String,
+}
+
+/// The json response format for `/api/run` and `/api/runscript`.
 ///
 /// # Serialized Example
 /// ```
