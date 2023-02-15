@@ -38,33 +38,31 @@ async fn run_synchronous_script(
         log::error!("Failed to write script data: {e}");
         return HttpResponse::InternalServerError().json(RunResponse {
             id: cmd_id,
-            status: RunStatus::Failure(FailureInfo {
+            status: RunStatus::Failure {
                 reason: String::from("Failed to write script data"),
-            }),
+            },
         });
     }
     // FIXME: executable flag
 
     let mut command = match interpreter {
         #[cfg(windows)]
-        RunScriptInterpreter::Bash => {
+        ScriptInterpreter::Bash => {
             // TODO: config for bash install path
             let mut command = Command::new(r"C:\Program Files\Git\bin\bash.exe");
             command.arg(script_path.as_os_str());
             command
         }
         #[cfg(windows)]
-        RunScriptInterpreter::Cmd | RunScriptInterpreter::Native => {
-            Command::new(script_path.as_os_str())
-        }
+        ScriptInterpreter::Cmd | ScriptInterpreter::Native => Command::new(script_path.as_os_str()),
         #[allow(unreachable_patterns)]
         _ => {
             log::error!("Interpreter {interpreter:?} not supported");
             return HttpResponse::BadRequest().json(RunResponse {
                 id: cmd_id,
-                status: RunStatus::Failure(FailureInfo {
+                status: RunStatus::Failure {
                     reason: String::from("Interpreter not supported"),
-                }),
+                },
             });
         }
     };

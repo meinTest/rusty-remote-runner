@@ -31,28 +31,28 @@ pub struct RunRequest {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct RunScriptQuery {
     #[serde(default)]
-    pub interpreter: RunScriptInterpreter,
+    pub interpreter: ScriptInterpreter,
 }
 
 /// The interpreter that the script will be called with.
 #[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
-pub enum RunScriptInterpreter {
+pub enum ScriptInterpreter {
     Bash,
     Cmd,
     #[default]
     Native,
 }
 
-impl RunScriptInterpreter {
+impl ScriptInterpreter {
     pub fn as_extension(&self) -> &'static str {
         match self {
-            RunScriptInterpreter::Bash => "sh",
-            RunScriptInterpreter::Cmd => "bat",
+            ScriptInterpreter::Bash => "sh",
+            ScriptInterpreter::Cmd => "bat",
             #[cfg(windows)]
-            RunScriptInterpreter::Native => "bat",
+            ScriptInterpreter::Native => "bat",
             #[cfg(unix)]
-            RunScriptInterpreter::Native => "sh",
+            ScriptInterpreter::Native => "sh",
         }
     }
 }
@@ -77,7 +77,7 @@ pub struct GetFileQuery {
 /// # "#;
 /// # let deser: rusty_remote_runner::api::RunResponse
 /// #    = serde_json::from_str(ser).expect("failed parsing");
-/// # assert!(matches!(deser.status, rusty_remote_runner::api::RunStatus::Failure(_)));
+/// # assert!(matches!(deser.status, rusty_remote_runner::api::RunStatus::Failure { .. }));
 /// ```
 #[derive(Debug, Serialize, Deserialize)]
 pub struct RunResponse {
@@ -89,20 +89,15 @@ pub struct RunResponse {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(tag = "status")]
 pub enum RunStatus {
-    Failure(FailureInfo),
+    /// Completly ran the command. The command may have succeeded of failed.
+    Completed {
+        // Todo: do I even want to return anything?
+        /// Exit code of the command or -1001 if terminated by a signal
+        exit_code: i32,
+        // Todo: time taken
+    },
+    /// Failed to run the command due to internal reasons.
+    /// Does not indicate a command that ran with a non-success exit code.
+    Failure { reason: String },
     //Pending(),
-    Completed(CompletionInfo),
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct FailureInfo {
-    pub reason: String,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct CompletionInfo {
-    // Todo: do I even want to return anything?
-    /// Exit code of the command or -1001 if terminated by a signal
-    pub exit_code: i32,
-    // Todo: time taken
 }

@@ -27,18 +27,18 @@ pub async fn process_command(cmd_id: Uuid, mut command: Command) -> HttpResponse
             log::debug!("> stderr:\n{}", String::from_utf8_lossy(&out.stderr).trim());
             RunResponse {
                 id: cmd_id,
-                status: RunStatus::Completed(CompletionInfo {
+                status: RunStatus::Completed {
                     exit_code: out.status.code().unwrap_or(-1001),
-                }),
+                },
             }
         }
         Err(e) => {
             log::debug!("Command failed due to {:?}", e);
             RunResponse {
                 id: cmd_id,
-                status: RunStatus::Failure(FailureInfo {
+                status: RunStatus::Failure {
                     reason: e.to_string(),
-                }),
+                },
             }
         }
     };
