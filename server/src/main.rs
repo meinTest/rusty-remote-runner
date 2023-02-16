@@ -15,6 +15,7 @@ async fn main() -> std::io::Result<()> {
 
     HttpServer::new(move || {
         App::new()
+            .service(service::info)
             .service(service::run_synchronous_command)
             .service(service::run_synchronous_script)
             .service(service::get_file)

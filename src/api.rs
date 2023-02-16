@@ -11,6 +11,22 @@
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+/// The json-response schema for `GET /api/info`.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct InfoResponse {
+    pub os_type: OsType,
+    pub computer_name: String,
+    // TODO: Semver?
+    pub api_version: String,
+}
+
+/// The OS type as given by #[cfg(windows)] and #[cfg(unix)]
+#[derive(Debug, Serialize, Deserialize)]
+pub enum OsType {
+    Windows,
+    Unix,
+}
+
 /// The json-body schema for `POST /api/run`.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct RunRequest {

@@ -7,7 +7,28 @@ use uuid::Uuid;
 
 use crate::process::{process_command, working_directory};
 
+#[cfg(all(windows, unix))]
+compile_error!("Unix and Windows are exclusive!");
+#[cfg(not(any(windows, unix)))]
+compile_error!("Either Unix and Windows must be targeted!");
+
 // TODO: asynchronous & asynchrnous exclusive
+
+#[get("/api/info")]
+async fn info() -> HttpResponse {
+    HttpResponse::Ok().json(InfoResponse {
+        // FIXME: This is the server version, not api version
+        api_version: String::from(env!("CARGO_PKG_VERSION")),
+        #[cfg(windows)]
+        computer_name: String::from(env!("COMPUTERNAME")),
+        #[cfg(windows)]
+        os_type: OsType::Windows,
+        #[cfg(unix)]
+        computer_name: String::from(env!("hostname")),
+        #[cfg(unix)]
+        os_type: OsType::Unix,
+    })
+}
 
 #[post("/api/run")]
 async fn run_synchronous_command(request: web::Json<RunRequest>) -> HttpResponse {
