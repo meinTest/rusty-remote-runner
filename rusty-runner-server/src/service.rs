@@ -1,9 +1,11 @@
+use std::env;
+
 use actix_files::NamedFile;
-use rusty_remote_runner::api::*;
+use rand::Rng;
+use rusty_runner_api::api::*;
 
 use actix_web::{get, post, web, HttpResponse};
 use tokio::process::Command;
-use uuid::Uuid;
 
 use crate::process::{process_command, working_directory};
 
@@ -12,19 +14,18 @@ compile_error!("Unix and Windows are exclusive!");
 #[cfg(not(any(windows, unix)))]
 compile_error!("Either Unix and Windows must be targeted!");
 
-// TODO: asynchronous & asynchrnous exclusive
-
 #[get("/api/info")]
 async fn info() -> HttpResponse {
+    // Note: the os type is determined at compile time, since binaries are incompatible anyway.
+    // The computer name may change as the binary is copied to another machine.
     HttpResponse::Ok().json(InfoResponse {
-        // FIXME: This is the server version, not api version
-        api_version: String::from(env!("CARGO_PKG_VERSION")),
+        api_version: String::from(VERSION),
         #[cfg(windows)]
-        computer_name: String::from(env!("COMPUTERNAME")),
+        computer_name: env::var("COMPUTERNAME").unwrap_or(String::from("{unknown}")),
         #[cfg(windows)]
         os_type: OsType::Windows,
         #[cfg(unix)]
-        computer_name: String::from(env!("hostname")),
+        computer_name: env::var("hostname").unwrap_or(String::from("{unknown}")),
         #[cfg(unix)]
         os_type: OsType::Unix,
     })
@@ -32,15 +33,15 @@ async fn info() -> HttpResponse {
 
 #[post("/api/run")]
 async fn run_synchronous_command(request: web::Json<RunRequest>) -> HttpResponse {
-    let cmd_id = Uuid::new_v4();
+    let cmd_id = rand::thread_rng().gen::<u64>();
     let request = request.into_inner();
-    log::info!("Running command {} (`{}`)", cmd_id, request.command);
+    log::info!("Running command with id {cmd_id} (`{}`)", request.command);
 
     let mut command = Command::new(request.command);
     command.current_dir(working_directory());
     command.args(request.arguments);
 
-    process_command(cmd_id, command).await
+    process_command(cmd_id, command, request.return_logs).await
 }
 
 #[post("/api/runscript")]
@@ -48,8 +49,9 @@ async fn run_synchronous_script(
     query: web::Query<RunScriptQuery>,
     body: web::Bytes,
 ) -> HttpResponse {
-    let cmd_id = Uuid::new_v4();
+    let cmd_id = rand::thread_rng().gen::<u64>();
     let interpreter = query.interpreter;
+    log::info!("Running script with id {cmd_id} (using {interpreter:?})");
 
     let mut script_path = working_directory();
     script_path.push(format!("script_{}.{}", cmd_id, interpreter.as_extension()));
@@ -64,7 +66,7 @@ async fn run_synchronous_script(
             },
         });
     }
-    // FIXME: executable flag
+    // TODO: executable flag & add unix support
 
     let mut command = match interpreter {
         #[cfg(windows)]
@@ -75,7 +77,10 @@ async fn run_synchronous_script(
             command
         }
         #[cfg(windows)]
-        ScriptInterpreter::Cmd | ScriptInterpreter::Native => Command::new(script_path.as_os_str()),
+        ScriptInterpreter::Cmd | ScriptInterpreter::Powershell => {
+            // File ending determines the interpreter.
+            Command::new(script_path.as_os_str())
+        }
         #[allow(unreachable_patterns)]
         _ => {
             log::error!("Interpreter {interpreter:?} not supported");
@@ -90,16 +95,14 @@ async fn run_synchronous_script(
 
     command.current_dir(working_directory());
 
-    process_command(cmd_id, command).await
+    process_command(cmd_id, command, query.return_logs).await
 }
 
 #[get("/api/file")]
 async fn get_file(query: web::Query<GetFileQuery>) -> actix_web::Result<NamedFile> {
-    // TODO: use https://crates.io/crates/shellexpand ?
-
+    // This is a simple static file server provided by [`actix_files`].
     let mut path = working_directory();
     path.push(&query.path);
 
-    // FIXME: is this the right way to go?
     Ok(NamedFile::open(path)?)
 }

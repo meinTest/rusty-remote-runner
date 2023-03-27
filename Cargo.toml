@@ -1,18 +1,17 @@
 [package]
-name = "rusty-remote-runner"
-version = "0.1.0"
+name = "rusty-runner-api"
+version = "1.0.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [workspace]
 members = [
-    "server",
+    "rusty-runner-server",
 ]
 
 [dependencies]
 serde = { version = "1.0.152", features = ["derive"] }
-uuid = { version = "1.2.2", features = ["serde"] }
 
 [dev-dependencies]
 serde_json = "1.0.91"

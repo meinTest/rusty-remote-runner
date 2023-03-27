@@ -915,12 +915,25 @@ dependencies = [
 ]
 
 [[package]]
-name = "rusty-remote-runner"
-version = "0.1.0"
+name = "rusty-runner-api"
+version = "1.0.0"
 dependencies = [
  "serde",
  "serde_json",
- "uuid",
+]
+
+[[package]]
+name = "rusty-runner-server"
+version = "0.2.0"
+dependencies = [
+ "actix-files",
+ "actix-web",
+ "env_logger",
+ "log",
+ "rand",
+ "rusty-runner-api",
+ "serde",
+ "tokio",
 ]
 
 [[package]]
@@ -982,20 +995,6 @@ dependencies = [
  "itoa",
  "ryu",
  "serde",
-]
-
-[[package]]
-name = "server"
-version = "0.1.0"
-dependencies = [
- "actix-files",
- "actix-web",
- "env_logger",
- "log",
- "rusty-remote-runner",
- "serde",
- "tokio",
- "uuid",
 ]
 
 [[package]]
@@ -1203,17 +1202,6 @@ dependencies = [
  "form_urlencoded",
  "idna",
  "percent-encoding",
-]
-
-[[package]]
-name = "uuid"
-version = "1.2.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "422ee0de9031b5b948b97a8fc04e3aa35230001a722ddd27943e0be31564ce4c"
-dependencies = [
- "getrandom",
- "rand",
- "serde",
 ]
 
 [[package]]
