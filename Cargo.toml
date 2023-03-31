@@ -1,10 +1,12 @@
 [package]
 name = "rusty-runner-api"
+description = "This crate serves purely as an REST api abstraction for a remote script execution server."
 version = "1.0.0"
 edition = "2021"
+repository = "https://github.com/meinTest/rusty-remote-runner"
+license = "MIT OR Apache-2.0"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
+# This folder also bundles an actix web based server for this protocol.
 [workspace]
 members = [
     "rusty-runner-server",
@@ -15,3 +17,4 @@ serde = { version = "1.0.152", features = ["derive"] }
 
 [dev-dependencies]
 serde_json = "1.0.91"
+serde_urlencoded = "0.7.1"

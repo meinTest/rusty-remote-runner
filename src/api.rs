@@ -1,20 +1,29 @@
-//! This module defines the API for this crate and its server.
-//!
-//! ## Working with files
-//! The working directory of the executed commands is implementation defined,
-//! but the same for all methods and constant over the lifetime of the server.
-//! The path for file fetching is also relative to this directory.
-//!
-//! Best use a relative randomly named subdirectory for your file operations.
-//! E.g. `./task-9ae4ef2b9d13/your-file`
+//! This module defines the API query, request body and response body
+//! schema for this crate and its server by means of serde serializable
+//! and deserializable rust structs.
 
-use std::time::Duration;
+#![warn(clippy::pedantic)]
 
 use serde::{Deserialize, Serialize};
+use std::time::Duration;
 
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// The json-response schema for `GET /api/info`.
+///
+/// # Serialized Example
+/// ```
+/// # let ser = r#"
+/// {
+///    "os_type": "Unix",
+///    "computer_name": "GLaDOS",
+///    "api_version": "1.0.0"
+/// }
+/// # "#;
+/// # let deser: rusty_runner_api::api::InfoResponse
+/// #    = serde_json::from_str(ser).expect("failed parsing");
+/// # assert_eq!(deser.computer_name, "GLaDOS");
+/// ```
 #[derive(Debug, Serialize, Deserialize)]
 pub struct InfoResponse {
     /// The operating system type running.
@@ -25,7 +34,7 @@ pub struct InfoResponse {
     pub api_version: String,
 }
 
-/// The OS type as given by `#[cfg(windows)]` and `#[cfg(unix)]`
+/// The OS type as given by `#[cfg(windows)]` and `#[cfg(unix)]`.
 #[derive(Debug, Serialize, Deserialize)]
 pub enum OsType {
     Windows,
@@ -33,6 +42,23 @@ pub enum OsType {
 }
 
 /// The json-body schema for `POST /api/run`.
+///
+/// # Serialized Example
+/// ```
+/// # let ser = r#"
+/// {
+///  "command": "echo",
+///  "arguments": [
+///    "Hello",
+///    "World"
+///  ],
+///  "return_logs": true
+///}
+/// # "#;
+/// # let deser: rusty_runner_api::api::RunRequest
+/// #    = serde_json::from_str(ser).expect("failed parsing");
+/// # assert_eq!(deser.command, "echo");
+/// ```
 #[derive(Debug, Serialize, Deserialize)]
 pub struct RunRequest {
     /// The command as available on the path or a path to an executable.
@@ -50,6 +76,16 @@ pub struct RunRequest {
 }
 
 /// The query schema for `POST /api/runscript`.
+///
+/// # Serialized Example
+/// ```
+/// # let ser = r#"
+/// interpreter=bash&return_logs=false
+/// # "#;
+/// # let deser: rusty_runner_api::api::RunScriptQuery
+/// #    = serde_urlencoded::from_str(ser.trim()).expect("failed parsing");
+/// # assert!(matches!(deser.interpreter, rusty_runner_api::api::ScriptInterpreter::Bash));
+/// ```
 #[derive(Debug, Serialize, Deserialize)]
 pub struct RunScriptQuery {
     /// The script in the request body will be run by the given `interpreter`.
@@ -73,6 +109,7 @@ pub enum ScriptInterpreter {
 
 impl ScriptInterpreter {
     /// Returns the default file extension.
+    #[must_use]
     pub fn as_extension(&self) -> &'static str {
         match self {
             ScriptInterpreter::Bash => "sh",
@@ -83,6 +120,17 @@ impl ScriptInterpreter {
 }
 
 /// The query schema for `GET /api/file`.
+///
+/// # Serialized Example
+/// ```
+/// # let ser =
+/// "path=C%3A%5CUser%5CChell%5Clog.txt"
+/// # ;
+/// # let deser: rusty_runner_api::api::GetFileQuery
+/// #    = serde_urlencoded::from_str(ser.trim()).expect("failed parsing");
+/// # assert_eq!(deser.path, r"C:\User\Chell\log.txt");
+/// ```
+/// will download the file `C:\User\Chell\log.txt`.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct GetFileQuery {
     /// The path of the file to fetch. See also module documentation.
@@ -92,6 +140,7 @@ pub struct GetFileQuery {
 /// The json response format for `/api/run` and `/api/runscript`.
 ///
 /// # Serialized Examples
+/// A completed command:
 /// ```
 /// # let ser = r#"
 /// {
@@ -104,9 +153,12 @@ pub struct GetFileQuery {
 ///     }
 /// }
 /// # "#;
-/// # let deser: rusty_remote_runner::api::RunResponse
+/// # let deser: rusty_runner_api::api::RunResponse
 /// #    = serde_json::from_str(ser).expect("failed parsing");
-/// # assert!(matches!(deser.status, rusty_remote_runner::api::RunStatus::Completed { .. }));
+/// # assert!(matches!(deser.status, rusty_runner_api::api::RunStatus::Completed { .. }));
+/// ```
+/// A command that could not be executed:
+/// ```
 /// # let ser = r#"
 /// {
 ///     "id": 1234567890,
@@ -114,9 +166,9 @@ pub struct GetFileQuery {
 ///     "reason": "Not supported"
 /// }
 /// # "#;
-/// # let deser: rusty_remote_runner::api::RunResponse
+/// # let deser: rusty_runner_api::api::RunResponse
 /// #    = serde_json::from_str(ser).expect("failed parsing");
-/// # assert!(matches!(deser.status, rusty_remote_runner::api::RunStatus::Failure { .. }));
+/// # assert!(matches!(deser.status, rusty_runner_api::api::RunStatus::Failure { .. }));
 /// ```
 #[derive(Debug, Serialize, Deserialize)]
 pub struct RunResponse {
@@ -125,6 +177,11 @@ pub struct RunResponse {
     pub status: RunStatus,
 }
 
+/// The outcome of a command.
+///
+/// If the command could be started, then this is a [`Completed`](RunStatus::Completed)
+/// even if the command itself exited non-successfully.
+/// Otherwise this is [`Failure`](RunStatus::Failure).
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(tag = "status")]
 pub enum RunStatus {
