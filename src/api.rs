@@ -35,7 +35,7 @@ pub struct InfoResponse {
 }
 
 /// The OS type as given by `#[cfg(windows)]` and `#[cfg(unix)]`.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum OsType {
     Windows,
     Unix,
