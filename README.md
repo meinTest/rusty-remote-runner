@@ -2,6 +2,8 @@
 
 This crate serves purely as an rest api abstraction for a remote
 script execution server.
+Additionally there is a canonical server implementation in the
+same repository.
 
 This can be used as a ssh replacement, without having to deal with
 command line escaping or default shells.
