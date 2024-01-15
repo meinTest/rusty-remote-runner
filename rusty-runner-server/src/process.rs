@@ -22,13 +22,13 @@ pub async fn process_command(cmd_id: u64, mut command: Command, return_logs: boo
     let response_json = match result {
         Ok(out) => {
             // FIXME: zero/one line stdout
-            log::debug!("Command {cmd_id} exited with code {}", out.status);
+            log::debug!("ID={cmd_id} {}", out.status);
             log::debug!(
-                "{cmd_id}> stdout:\n{}",
+                "ID={cmd_id} stdout:\n{}",
                 String::from_utf8_lossy(&out.stdout).trim()
             );
             log::debug!(
-                "{cmd_id}> stderr:\n{}",
+                "ID={cmd_id} stderr:\n{}",
                 String::from_utf8_lossy(&out.stderr).trim()
             );
             // TODO: write logs to file ?
@@ -46,7 +46,7 @@ pub async fn process_command(cmd_id: u64, mut command: Command, return_logs: boo
             }
         }
         Err(e) => {
-            log::debug!("Command {cmd_id} failed due to {:?}", e);
+            log::debug!("ID={cmd_id} failed due to {e:?}");
             RunResponse {
                 id: cmd_id,
                 status: RunStatus::Failure {

@@ -35,7 +35,9 @@ async fn info() -> HttpResponse {
 async fn run_synchronous_command(request: web::Json<RunRequest>) -> HttpResponse {
     let cmd_id = rand::thread_rng().gen::<u64>();
     let request = request.into_inner();
-    log::info!("Running command with id {cmd_id} (`{}`)", request.command);
+    log::info!("Running ID={cmd_id}");
+    log::debug!("ID={cmd_id} command: {}", request.command);
+    log::debug!("ID={cmd_id} arguments:{:?}", request.arguments);
 
     let mut command = Command::new(request.command);
     command.current_dir(working_directory());
@@ -51,12 +53,16 @@ async fn run_synchronous_script(
 ) -> HttpResponse {
     let cmd_id = rand::thread_rng().gen::<u64>();
     let interpreter = query.interpreter;
-    log::info!("Running script with id {cmd_id} (using {interpreter:?})");
+    log::info!("Running script ID={cmd_id}");
+    log::debug!("ID={cmd_id} interpreter: {interpreter:?}");
 
     let mut script_path = working_directory();
     script_path.push(format!("script_{}.{}", cmd_id, interpreter.as_extension()));
+    log::debug!("ID={cmd_id} script path: {script_path:?}");
 
     let script = String::from_utf8_lossy(&body);
+    log::debug!("ID={cmd_id} script: {script:?}");
+
     if let Err(e) = std::fs::write(script_path.as_path(), script.as_bytes()) {
         log::error!("Failed to write script data: {e}");
         return HttpResponse::InternalServerError().json(RunResponse {
@@ -85,7 +91,7 @@ async fn run_synchronous_script(
         }
         #[allow(unreachable_patterns)]
         _ => {
-            log::error!("Interpreter {interpreter:?} not supported");
+            log::error!("ID={cmd_id} interpreter {interpreter:?} not supported");
             return HttpResponse::BadRequest().json(RunResponse {
                 id: cmd_id,
                 status: RunStatus::Failure {
