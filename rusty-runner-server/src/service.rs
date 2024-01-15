@@ -12,7 +12,7 @@ use crate::process::{process_command, working_directory};
 #[cfg(all(windows, unix))]
 compile_error!("Unix and Windows are exclusive!");
 #[cfg(not(any(windows, unix)))]
-compile_error!("Either Unix and Windows must be targeted!");
+compile_error!("Either Unix or Windows must be targeted!");
 
 #[get("/api/info")]
 async fn info() -> HttpResponse {
@@ -25,7 +25,7 @@ async fn info() -> HttpResponse {
         #[cfg(windows)]
         os_type: OsType::Windows,
         #[cfg(unix)]
-        computer_name: env::var("hostname").unwrap_or(String::from("{unknown}")),
+        computer_name: env::var("HOSTNAME").unwrap_or(String::from("{unknown}")),
         #[cfg(unix)]
         os_type: OsType::Unix,
     })
@@ -69,10 +69,12 @@ async fn run_synchronous_script(
     // TODO: executable flag & add unix support
 
     let mut command = match interpreter {
-        #[cfg(windows)]
         ScriptInterpreter::Bash => {
+            #[cfg(windows)]
             // TODO: config for bash install path
             let mut command = Command::new(r"C:\Program Files\Git\bin\bash.exe");
+            #[cfg(unix)]
+            let mut command = Command::new("bash");
             command.arg(script_path.as_os_str());
             command
         }
