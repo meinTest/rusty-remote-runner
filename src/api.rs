@@ -192,6 +192,7 @@ pub enum RunStatus {
         exit_code: i32,
         /// If `return_logs` is set, this returns a tuple of the raw `stdout` and `stderr`
         /// logs.
+        // TODO: It would be MUCH better for consumer clients if this was split into 2 fields.
         std_out_and_err: Option<(Vec<u8>, Vec<u8>)>,
         /// The wall time it took to run.
         time_taken: Duration,
