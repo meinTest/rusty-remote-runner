@@ -1,8 +1,7 @@
+use axum::Json;
 use std::{path::PathBuf, time::Instant};
 
-use rusty_runner_api::api::*;
-
-use actix_web::HttpResponse;
+use rusty_runner_api::api::{RunResponse, RunStatus};
 use tokio::process::Command;
 
 /// The directory where all commands will be executed in.
@@ -12,28 +11,22 @@ pub fn working_directory() -> PathBuf {
     path
 }
 
-pub async fn process_command(cmd_id: u64, mut command: Command, return_logs: bool) -> HttpResponse {
+pub async fn process(id: u64, mut command: Command, return_logs: bool) -> Json<RunResponse> {
     // Just run the command and wait for the completion.
     let start = Instant::now();
     let result = command.output().await;
     let end = Instant::now();
     let time_taken = end - start;
 
-    let response_json = match result {
+    let response = match result {
         Ok(out) => {
             // FIXME: zero/one line stdout
-            log::debug!("ID={cmd_id} {}", out.status);
-            log::debug!(
-                "ID={cmd_id} stdout:\n{}",
-                String::from_utf8_lossy(&out.stdout).trim()
-            );
-            log::debug!(
-                "ID={cmd_id} stderr:\n{}",
-                String::from_utf8_lossy(&out.stderr).trim()
-            );
+            log::debug!(id; "Status: {}", out.status);
+            log::debug!(id; "Stdout: {}", String::from_utf8_lossy(&out.stdout).trim());
+            log::debug!(id; "Stderr: {}", String::from_utf8_lossy(&out.stderr).trim());
             // TODO: write logs to file ?
             RunResponse {
-                id: cmd_id,
+                id,
                 status: RunStatus::Completed {
                     exit_code: out.status.code().unwrap_or(-1001),
                     time_taken,
@@ -46,9 +39,9 @@ pub async fn process_command(cmd_id: u64, mut command: Command, return_logs: boo
             }
         }
         Err(e) => {
-            log::debug!("ID={cmd_id} failed due to {e:?}");
+            log::info!(id; "Failed: {e:?}");
             RunResponse {
-                id: cmd_id,
+                id,
                 status: RunStatus::Failure {
                     reason: e.to_string(),
                 },
@@ -57,5 +50,5 @@ pub async fn process_command(cmd_id: u64, mut command: Command, return_logs: boo
     };
 
     // Also wrap the failure into a 200 code, since it is usually due to program not found.
-    HttpResponse::Ok().json(&response_json)
+    Json(response)
 }

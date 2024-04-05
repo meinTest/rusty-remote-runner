@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! This crate serves purely as an rest api abstraction for a remote
 //! script execution server.
 //! Additionally there is a canonical server implementation in the

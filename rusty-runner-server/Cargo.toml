@@ -6,11 +6,16 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-actix-web = "4.4"
-actix-files = "0.6"
-env_logger = "0.10"
-log = "0.4"
-serde = { version = "1.0", features = ["derive"] }
-tokio = { version = "1.35", features = ["process"] }
-rusty-runner-api = { version = "1.0", path = "../" }
+rusty-runner-api = { version = "1", path = "../" }
+# -- Async
+tokio = { version = "1", features = ["fs", "process"] }
+# -- Serde
+serde = { version = "1", features = ["derive"]}
+# -- Web
+axum = "0.7"
+tower-http = {version = "0.5", features = ["fs", "trace"] }
+# -- Logging
+log = { version = "0.4", features = ["kv"] }
+env_logger = { version = "0.11", features = ["unstable-kv"] }
+# -- Util
 rand = "0.8"
