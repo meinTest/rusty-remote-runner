@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 
 use axum::Router;
+use log::LevelFilter;
 use tower_http::trace::TraceLayer;
 
 mod process;
@@ -8,18 +9,17 @@ mod routes;
 
 #[tokio::main(flavor = "current_thread")] // single-threaded, multi requires rt-multi-thread feature
 async fn main() -> std::io::Result<()> {
-    if std::env::var_os("RUST_LOG").is_none() {
-        std::env::set_var(
-            "RUST_LOG",
-            "warn,tower_http=trace,rusty_runner_server=debug",
-        );
-    }
-    env_logger::init();
+    env_logger::builder()
+        .filter(None, LevelFilter::Warn)
+        .filter(Some("tower_http"), LevelFilter::Debug)
+        .filter(Some("rusty_runner_server"), LevelFilter::Debug)
+        .parse_default_env()
+        .init();
 
     log::info!(
-        "Starting server v{} [api v{}]",
-        env!("CARGO_PKG_VERSION"),
-        rusty_runner_api::api::VERSION
+        version = env!("CARGO_PKG_VERSION"),
+        api_version =rusty_runner_api::api::VERSION;
+        "Initializing server"
     );
 
     // Create the server working directory
@@ -33,9 +33,15 @@ async fn main() -> std::io::Result<()> {
         .nest("/api", routes::routes())
         .layer(TraceLayer::new_for_http());
 
-    let addr = "127.0.0.1:8000";
+    let host = "0.0.0.0";
+    let port = 1337;
+    let addr = format!("{host}:{port}");
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
-    log::info!("Listening on {addr}");
+    log::info!(
+        addr:display = host,
+        port = port;
+        "listening to TCP"
+    );
 
     axum::serve(listener, router.into_make_service()).await
 
