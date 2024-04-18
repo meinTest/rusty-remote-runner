@@ -1,5 +1,6 @@
 #![forbid(unsafe_code)]
 
+use axum::routing::get;
 use axum::Router;
 use log::LevelFilter;
 use tower_http::trace::TraceLayer;
@@ -31,6 +32,7 @@ async fn main() -> std::io::Result<()> {
 
     let router = Router::new()
         .nest("/api", routes::routes())
+        .route("/health", get(|| async { "OK" }))
         .layer(TraceLayer::new_for_http());
 
     let host = "0.0.0.0";
