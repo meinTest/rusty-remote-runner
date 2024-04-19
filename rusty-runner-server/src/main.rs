@@ -3,6 +3,7 @@
 use axum::routing::get;
 use axum::Router;
 use log::LevelFilter;
+use tokio::signal;
 use tower_http::trace::TraceLayer;
 
 mod process;
@@ -45,7 +46,9 @@ async fn main() -> std::io::Result<()> {
         "listening to TCP"
     );
 
-    axum::serve(listener, router.into_make_service()).await
+    axum::serve(listener, router.into_make_service())
+        .with_graceful_shutdown(shutdown_signal())
+        .await
 
     /*
     HttpServer::new(move || {
@@ -59,4 +62,28 @@ async fn main() -> std::io::Result<()> {
     .bind(("127.0.0.1", 8000))?
     .run()
     .await*/
+}
+
+async fn shutdown_signal() {
+    let ctrl_c = async {
+        signal::ctrl_c()
+            .await
+            .expect("failed to install SIGINT (ctrl+c) handler");
+    };
+
+    #[cfg(unix)]
+    let terminate = async {
+        signal::unix::signal(signal::unix::SignalKind::terminate())
+            .expect("failed to install SIGTERM handler")
+            .recv()
+            .await;
+    };
+
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = ctrl_c => log::info!("received SIGINT (ctrl+c), shutting down"),
+        _ = terminate => log::info!("received SIGTERM, shutting down"),
+    }
 }

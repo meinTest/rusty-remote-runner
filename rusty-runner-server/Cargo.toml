@@ -8,7 +8,7 @@ edition = "2021"
 [dependencies]
 rusty-runner-api = { version = "1", path = "../" }
 # -- Async
-tokio = { version = "1", features = ["fs", "process"] }
+tokio = { version = "1", features = ["fs", "process", "signal"] }
 # -- Serde
 serde = { version = "1", features = ["derive"]}
 # -- Web
