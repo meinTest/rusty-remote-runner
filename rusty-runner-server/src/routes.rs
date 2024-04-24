@@ -4,7 +4,6 @@ use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::routing::{get, get_service, post};
 use axum::{Json, Router};
-use rand::random;
 use rusty_runner_api::api::{
     InfoResponse, OsType, RunRequest, RunResponse, RunScriptQuery, RunStatus, ScriptInterpreter,
     VERSION,
@@ -36,7 +35,7 @@ async fn info() -> Json<InfoResponse> {
 }
 
 async fn run_command(Json(request): Json<RunRequest>) -> Json<RunResponse> {
-    let id = random::<u64>();
+    let id = fastrand::u64(..);
 
     log::info!(id; "Received command");
     log::debug!(id; "Command: {}", request.command);
@@ -46,11 +45,12 @@ async fn run_command(Json(request): Json<RunRequest>) -> Json<RunResponse> {
     command.current_dir(working_directory());
     command.args(request.arguments);
 
-    process(id, command, request.return_logs).await
+    let response = process(id, command, request.return_logs).await;
+    Json(response)
 }
 
 async fn run_script(Query(query): Query<RunScriptQuery>, script: String) -> impl IntoResponse {
-    let id = random::<u64>();
+    let id = fastrand::u64(..);
     let interpreter = query.interpreter;
     log::info!(id; "Received script");
     log::debug!(id; "Interpreter: {interpreter:?}");
@@ -108,7 +108,6 @@ async fn run_script(Query(query): Query<RunScriptQuery>, script: String) -> impl
 
     command.current_dir(working_directory());
 
-    process(id, command, query.return_logs)
-        .await
-        .into_response()
+    let response = process(id, command, query.return_logs).await;
+    Json(response).into_response()
 }

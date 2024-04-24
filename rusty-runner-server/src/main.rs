@@ -2,6 +2,7 @@
 
 use axum::routing::get;
 use axum::Router;
+use clap::Parser;
 use log::LevelFilter;
 use tokio::signal;
 use tower_http::trace::TraceLayer;
@@ -18,6 +19,8 @@ async fn main() -> std::io::Result<()> {
         .parse_default_env()
         .init();
 
+    let CliArgs { host, port } = CliArgs::parse();
+
     log::info!(
         version = env!("CARGO_PKG_VERSION"),
         api_version =rusty_runner_api::api::VERSION;
@@ -32,12 +35,10 @@ async fn main() -> std::io::Result<()> {
     }
 
     let router = Router::new()
-        .nest("/api", routes::routes())
+        .merge(routes::routes())
         .route("/health", get(|| async { "OK" }))
         .layer(TraceLayer::new_for_http());
 
-    let host = "0.0.0.0";
-    let port = 1337;
     let addr = format!("{host}:{port}");
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
     log::info!(
@@ -49,19 +50,16 @@ async fn main() -> std::io::Result<()> {
     axum::serve(listener, router.into_make_service())
         .with_graceful_shutdown(shutdown_signal())
         .await
+}
 
-    /*
-    HttpServer::new(move || {
-        App::new()
-            .service(service::info)
-            .service(service::run_synchronous_command)
-            .service(service::run_synchronous_script)
-            .service(service::get_file)
-            .wrap(Logger::default())
-    })
-    .bind(("127.0.0.1", 8000))?
-    .run()
-    .await*/
+#[derive(Parser)]
+struct CliArgs {
+    /// The host address for the rusty-runner server.
+    #[arg(long, value_name = "URI", default_value = "0.0.0.0")]
+    host: String,
+    /// The host port for the rusty-runner server.
+    #[arg(short, long, value_name = "PORT", default_value_t = 1337)]
+    port: u16,
 }
 
 async fn shutdown_signal() {

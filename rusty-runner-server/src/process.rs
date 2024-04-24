@@ -1,4 +1,3 @@
-use axum::Json;
 use std::{path::PathBuf, time::Instant};
 
 use rusty_runner_api::api::{RunResponse, RunStatus};
@@ -11,14 +10,14 @@ pub fn working_directory() -> PathBuf {
     path
 }
 
-pub async fn process(id: u64, mut command: Command, return_logs: bool) -> Json<RunResponse> {
+pub async fn process(id: u64, mut command: Command, return_logs: bool) -> RunResponse {
     // Just run the command and wait for the completion.
     let start = Instant::now();
     let result = command.output().await;
     let end = Instant::now();
     let time_taken = end - start;
 
-    let response = match result {
+    match result {
         Ok(out) => {
             // FIXME: zero/one line stdout
             log::debug!(id; "Status: {}", out.status);
@@ -47,8 +46,5 @@ pub async fn process(id: u64, mut command: Command, return_logs: bool) -> Json<R
                 },
             }
         }
-    };
-
-    // Also wrap the failure into a 200 code, since it is usually due to program not found.
-    Json(response)
+    }
 }
