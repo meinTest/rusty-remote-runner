@@ -1,13 +1,20 @@
 [package]
 name = "rusty-runner-api"
 description = "This crate serves purely as an REST api abstraction for a remote script execution server."
-version = "1.0.1"
+version = "1.0.2"
 edition = "2021"
 repository = "https://github.com/meinTest/rusty-remote-runner"
 license = "MIT OR Apache-2.0"
 
-# This folder also bundles an actix web based server for this protocol.
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+pedantic = "warn"
+
+# This folder also bundles an axum web based server for this protocol.
 [workspace]
+resolver = "2"
 members = [
     "rusty-runner-server",
 ]

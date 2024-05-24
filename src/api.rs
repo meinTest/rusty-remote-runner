@@ -2,8 +2,6 @@
 //! schema for this crate and its server by means of serde serializable
 //! and deserializable rust structs.
 
-#![warn(clippy::pedantic)]
-
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
