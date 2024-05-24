@@ -1,9 +1,8 @@
-#![forbid(unsafe_code)]
-
 use axum::routing::get;
 use axum::Router;
-use clap::Parser;
+use clap::{Parser, ValueHint};
 use log::LevelFilter;
+use std::num::NonZeroU16;
 use tokio::signal;
 use tower_http::trace::TraceLayer;
 
@@ -13,7 +12,7 @@ mod routes;
 #[tokio::main(flavor = "current_thread")] // single-threaded, multi requires rt-multi-thread feature
 async fn main() -> std::io::Result<()> {
     env_logger::builder()
-        .filter(None, LevelFilter::Warn)
+        .filter_level(LevelFilter::Info)
         .filter(Some("tower_http"), LevelFilter::Debug)
         .filter(Some("rusty_runner_server"), LevelFilter::Debug)
         .parse_default_env()
@@ -34,6 +33,7 @@ async fn main() -> std::io::Result<()> {
             .expect("Should be able to write to the temporary directory!");
     }
 
+    log::info!(path = "/api/v1"; "nesting sub-routes");
     let router = Router::new()
         .merge(routes::routes())
         .route("/health", get(|| async { "OK" }))
@@ -55,11 +55,24 @@ async fn main() -> std::io::Result<()> {
 #[derive(Parser)]
 struct CliArgs {
     /// The host address for the rusty-runner server.
-    #[arg(long, value_name = "URI", default_value = "0.0.0.0")]
+    #[arg(
+        long,
+        value_name = "URI",
+        value_hint = ValueHint::Hostname,
+        default_value = "0.0.0.0",
+        env = "RUSTY_RUNNER_HOST",
+    )]
     host: String,
     /// The host port for the rusty-runner server.
-    #[arg(short, long, value_name = "PORT", default_value_t = 1337)]
-    port: u16,
+    #[arg(
+        short,
+        long,
+        value_name = "PORT",
+        value_hint = ValueHint::Other,
+        default_value = "1337",
+        env = "RUSTY_RUNNER_PORT",
+    )]
+    port: NonZeroU16,
 }
 
 async fn shutdown_signal() {
@@ -81,7 +94,7 @@ async fn shutdown_signal() {
     let terminate = std::future::pending::<()>();
 
     tokio::select! {
-        _ = ctrl_c => log::info!("received SIGINT (ctrl+c), shutting down"),
-        _ = terminate => log::info!("received SIGTERM, shutting down"),
+        () = ctrl_c => log::info!("received SIGINT (ctrl+c), shutting down"),
+        () = terminate => log::info!("received SIGTERM, shutting down"),
     }
 }

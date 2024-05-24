@@ -2,7 +2,7 @@ use crate::process::{process, working_directory};
 use axum::extract::Query;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
-use axum::routing::{get, get_service, post};
+use axum::routing::{get, get_service, post, MethodRouter};
 use axum::{Json, Router};
 use rusty_runner_api::api::{
     InfoResponse, OsType, RunRequest, RunResponse, RunScriptQuery, RunStatus, ScriptInterpreter,
@@ -13,14 +13,14 @@ use tower_http::services::ServeDir;
 
 pub fn routes() -> Router {
     Router::new()
-        .route("/info", get(info))
-        .route("/run", post(run_command))
-        .route("/runscript", post(run_script))
-        .nest_service("/file", get_service(ServeDir::new(working_directory())))
+        .route_logged("/info", get(info))
+        .route_logged("/run", post(run_command))
+        .route_logged("/runscript", post(run_script))
+        .nest_service_logged("/file", get_service(ServeDir::new(working_directory())))
 }
 
 async fn info() -> Json<InfoResponse> {
-    log::debug!("Sending info");
+    log::debug!("sending info");
     Json(InfoResponse {
         api_version: String::from(VERSION),
         #[cfg(windows)]
@@ -37,9 +37,9 @@ async fn info() -> Json<InfoResponse> {
 async fn run_command(Json(request): Json<RunRequest>) -> Json<RunResponse> {
     let id = fastrand::u64(..);
 
-    log::info!(id; "Received command");
-    log::debug!(id; "Command: {}", request.command);
-    log::debug!(id; "Arguments: {:?}", request.arguments);
+    log::info!(id; "received command");
+    log::debug!(id; "command: {}", request.command);
+    log::debug!(id; "arguments: {:?}", request.arguments);
 
     let mut command = Command::new(request.command);
     command.current_dir(working_directory());
@@ -52,16 +52,16 @@ async fn run_command(Json(request): Json<RunRequest>) -> Json<RunResponse> {
 async fn run_script(Query(query): Query<RunScriptQuery>, script: String) -> impl IntoResponse {
     let id = fastrand::u64(..);
     let interpreter = query.interpreter;
-    log::info!(id; "Received script");
-    log::debug!(id; "Interpreter: {interpreter:?}");
-    log::debug!(id; "Script: {script:?}");
+    log::info!(id; "received script");
+    log::debug!(id; "interpreter: {interpreter:?}");
+    log::debug!(id; "script: {script:?}");
 
     let mut script_path = working_directory();
     script_path.push(format!("script_{}.{}", id, interpreter.as_extension()));
-    log::debug!(id; "Script path: {script_path:?}");
+    log::debug!(id; "script path: {script_path:?}");
 
     if let Err(e) = tokio::fs::write(&script_path, &script).await {
-        log::error!(id; "Failed to write script data: {e}");
+        log::error!(id; "failed to write script data: {e}");
         return (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(RunResponse {
@@ -92,7 +92,7 @@ async fn run_script(Query(query): Query<RunScriptQuery>, script: String) -> impl
         }
         #[allow(unreachable_patterns)]
         _ => {
-            log::error!(id; "Interpreter {interpreter:?} not supported");
+            log::error!(id; "interpreter {interpreter:?} not supported");
             return (
                 StatusCode::BAD_REQUEST,
                 Json(RunResponse {
@@ -110,4 +110,23 @@ async fn run_script(Query(query): Query<RunScriptQuery>, script: String) -> impl
 
     let response = process(id, command, query.return_logs).await;
     Json(response).into_response()
+}
+
+trait LoggedExt {
+    /// [`Router::route`] and log which sub-route is being added to the router.
+    fn route_logged(self, path: &str, method_router: MethodRouter) -> Self;
+    /// [`Router::nest_service`] and log which nested service is being added to the router.
+    fn nest_service_logged(self, path: &str, method_router: MethodRouter) -> Self;
+}
+
+impl LoggedExt for Router {
+    fn route_logged(self, path: &str, method_router: MethodRouter) -> Self {
+        log::info!(path; "adding sub-route");
+        self.route(path, method_router)
+    }
+
+    fn nest_service_logged(self, path: &str, method_router: MethodRouter) -> Self {
+        log::info!(path; "adding nested service");
+        self.nest_service(path, method_router)
+    }
 }

@@ -1,11 +1,13 @@
 [package]
 name = "rusty-runner-server"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lints]
+workspace = true
 
 [dependencies]
+# -- Internal
 rusty-runner-api = { version = "1", path = "../" }
 # -- Async
 tokio = { version = "1", features = ["fs", "process", "signal"] }
@@ -19,7 +21,8 @@ log = { version = "0.4", features = ["kv"] }
 env_logger = { version = "0.11", features = ["unstable-kv"] }
 # -- Util
 fastrand = "2"
-clap = { version = "4", features = ["derive"] }
+# -- CLI
+clap = { version = "4", features = ["derive", "env"] }
 
 [dev-dependencies]
 anyhow = "1"
