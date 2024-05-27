@@ -33,9 +33,9 @@ async fn main() -> std::io::Result<()> {
             .expect("Should be able to write to the temporary directory!");
     }
 
-    log::info!(path = "/api/v1"; "nesting sub-routes");
+    log::info!(path = "/api"; "nesting sub-routes");
     let router = Router::new()
-        .merge(routes::routes())
+        .nest("/api", routes::routes())
         .route("/health", get(|| async { "OK" }))
         .layer(TraceLayer::new_for_http());
 
