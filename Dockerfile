@@ -59,4 +59,5 @@ USER appuser
 
 COPY --from=builder /bin/server /bin/
 
+HEALTHCHECK --interval=1m --timeout=3s CMD curl -f http://localhost:1337/health || exit 1
 ENTRYPOINT ["/bin/server"]
