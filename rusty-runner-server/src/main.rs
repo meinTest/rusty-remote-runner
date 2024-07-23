@@ -11,7 +11,9 @@ async fn main() -> std::io::Result<()> {
     }
     env_logger::init();
 
+    let addr = ("127.0.0.1", 8000);
     log::info!(
+        listening_on:debug = addr;
         "Starting server v{} [api v{}]",
         env!("CARGO_PKG_VERSION"),
         rusty_runner_api::api::VERSION
@@ -31,7 +33,7 @@ async fn main() -> std::io::Result<()> {
             .service(service::get_file)
             .wrap(Logger::default())
     })
-    .bind(("127.0.0.1", 8000))?
+    .bind(addr)?
     .run()
     .await
 }
