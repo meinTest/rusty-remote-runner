@@ -40,7 +40,7 @@ async fn main() -> std::io::Result<()> {
         .layer(TraceLayer::new_for_http());
 
     let addr = format!("{host}:{port}");
-    let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
+    let listener = tokio::net::TcpListener::bind(addr).await?;
     log::info!(
         addr:display = host,
         port = port;
@@ -55,11 +55,12 @@ async fn main() -> std::io::Result<()> {
 #[derive(Parser)]
 struct CliArgs {
     /// The host address for the rusty-runner server.
+    /// Keep `127.0.0.1` to protect against access from the outside.
     #[arg(
         long,
         value_name = "URI",
         value_hint = ValueHint::Hostname,
-        default_value = "0.0.0.0",
+        default_value = "127.0.0.1",
         env = "RUSTY_RUNNER_HOST",
     )]
     host: String,
@@ -69,7 +70,7 @@ struct CliArgs {
         long,
         value_name = "PORT",
         value_hint = ValueHint::Other,
-        default_value = "1337",
+        default_value = "8000",
         env = "RUSTY_RUNNER_PORT",
     )]
     port: NonZeroU16,
