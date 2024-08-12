@@ -117,24 +117,6 @@ impl ScriptInterpreter {
     }
 }
 
-/// The query schema for `GET /api/file`.
-///
-/// # Serialized Example
-/// ```
-/// # let ser =
-/// "path=C%3A%5CUser%5CChell%5Clog.txt"
-/// # ;
-/// # let deser: rusty_runner_api::api::GetFileQuery
-/// #    = serde_urlencoded::from_str(ser.trim()).expect("failed parsing");
-/// # assert_eq!(deser.path, r"C:\User\Chell\log.txt");
-/// ```
-/// will download the file `C:\User\Chell\log.txt`.
-#[derive(Debug, Serialize, Deserialize)]
-pub struct GetFileQuery {
-    /// The path of the file to fetch. See also module documentation.
-    pub path: String,
-}
-
 /// The json response format for `/api/run` and `/api/runscript`.
 ///
 /// # Serialized Examples

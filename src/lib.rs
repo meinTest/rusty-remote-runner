@@ -11,19 +11,19 @@
 //! * `GET /api/info` returns an informative [`api::InfoResponse`] object.
 //! * `POST /api/run` runs a command analogous to [`std::process::Command`].
 //! * `POST /api/runscript` runs a script with a given interpreter.
-//! * `GET /api/file` fetches a file from the servers file system.
+//! * `GET /api/file/{path}` fetches a file from the servers file system.
 //!
 //! ## Working with files
 //! The working directory of the executed commands is implementation defined,
 //! but the same for all methods and constant over the lifetime of the server.
-//! The path for file fetching is also relative to this directory.
+//! The path for file fetching is also relative to (and confined to!) this directory.
 //!
 //! Best use a relative randomly named subdirectory for your file operations.
 //! E.g. `./task-9ae4ef2b9d13/your-file`
 //!
 //! ## Long running jobs
 //! Using `reqwest` and `actix_web` does not impose and significant timeout on
-//! the rest calls. Therefore currently the rest calls will just wait untill
+//! the rest calls. Therefore currently the rest calls will just wait until
 //! the command terminates and return then.
 //! *Make sure your commands always terminate* in order to not lock up valuable
 //! resources.
