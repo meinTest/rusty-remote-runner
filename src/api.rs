@@ -15,12 +15,13 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 /// {
 ///    "os_type": "Unix",
 ///    "computer_name": "GLaDOS",
-///    "api_version": "1.0.0"
+///    "api_version": "2.0.0"
 /// }
 /// # "#;
 /// # let deser: rusty_runner_api::api::InfoResponse
 /// #    = serde_json::from_str(ser).expect("failed parsing");
 /// # assert_eq!(deser.computer_name, "GLaDOS");
+/// # assert_eq!(deser.api_version, rusty_runner_api::api::VERSION);
 /// ```
 #[derive(Debug, Serialize, Deserialize)]
 pub struct InfoResponse {
@@ -50,7 +51,8 @@ pub enum OsType {
 ///    "Hello",
 ///    "World"
 ///  ],
-///  "return_logs": true
+///  "return_stderr": true,
+///  "return_stdout": false
 ///}
 /// # "#;
 /// # let deser: rusty_runner_api::api::RunRequest
@@ -68,9 +70,12 @@ pub struct RunRequest {
     /// are not supported.
     /// Avoid `cmd.exe /C`!
     pub arguments: Vec<String>,
-    /// `true` if the api should return `stdout` and `stderr`. Otherwise only
-    /// the exit code is returned.
-    pub return_logs: bool,
+    /// `true` if the api should capture and return `stdout`. Defaults to `false`.
+    #[serde(default)]
+    pub return_stdout: bool,
+    /// `true` if the api should capture and return `stderr`. Defaults to `false`.
+    #[serde(default)]
+    pub return_stderr: bool,
 }
 
 /// The query schema for `POST /api/runscript`.
@@ -78,7 +83,7 @@ pub struct RunRequest {
 /// # Serialized Example
 /// ```
 /// # let ser = r#"
-/// interpreter=bash&return_logs=false
+/// interpreter=bash&return_stderr=true
 /// # "#;
 /// # let deser: rusty_runner_api::api::RunScriptQuery
 /// #    = serde_urlencoded::from_str(ser.trim()).expect("failed parsing");
@@ -88,10 +93,14 @@ pub struct RunRequest {
 pub struct RunScriptQuery {
     /// The script in the request body will be run by the given `interpreter`.
     pub interpreter: ScriptInterpreter,
-    /// `true` if the api should return `stdout` and `stderr`. Otherwise only
-    /// the exit code is returned. Defaults to `false`.
+    // Note, `serde` does not support proper flattening here, so this cannot be moved to a struct `OutputOptions`,
+    // <https://github.com/nox/serde_urlencoded/issues/33>.
+    /// `true` if the api should capture and return `stdout`. Defaults to `false`.
     #[serde(default)]
-    pub return_logs: bool,
+    pub return_stdout: bool,
+    /// `true` if the api should capture and return `stderr`. Defaults to `false`.
+    #[serde(default)]
+    pub return_stderr: bool,
 }
 
 /// The interpreter that the script will be called with.
@@ -170,12 +179,14 @@ pub enum RunStatus {
         /// Exit code of the command or -1001 if terminated by a signal.
         /// This may get only return the least byte.
         exit_code: i32,
-        /// If `return_logs` is set, this returns a tuple of the raw `stdout` and `stderr`
-        /// logs.
-        // TODO: It would be MUCH better for consumer clients if this was split into 2 fields.
-        std_out_and_err: Option<(Vec<u8>, Vec<u8>)>,
         /// The wall time it took to run.
         time_taken: Duration,
+        /// If `return_stdout` is set, this returns the raw `stdout` bytes.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        stdout: Option<Vec<u8>>,
+        /// If `return_stderr` is set, this returns the raw `stderr` bytes.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        stderr: Option<Vec<u8>>,
     },
     /// Failed to run the command due to internal reasons.
     /// Does not indicate a command that ran with a non-success exit code, but

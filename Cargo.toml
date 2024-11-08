@@ -15,9 +15,7 @@ pedantic = "warn"
 # This folder also bundles an axum web based server for this protocol.
 [workspace]
 resolver = "2"
-members = [
-    "rusty-runner-server",
-]
+members = ["rusty-runner-server"]
 
 [dependencies]
 serde = { version = "1.0.202", features = ["derive"] }
@@ -25,6 +23,7 @@ serde = { version = "1.0.202", features = ["derive"] }
 [dev-dependencies]
 serde_json = "1.0.117"
 serde_urlencoded = "0.7.1"
+
 
 [profile.release]
 codegen-units = 1
