@@ -1,3 +1,8 @@
+//! Runs a server complying with the [`rusty_runner_api`].
+//!
+//! Listens on `localhost:8000` unless changed by the [`CliArgs`].
+//! The working directory is determined by [`{std::env::temp_dir()}/rusty-runner`][process::working_directory].
+
 use axum::routing::get;
 use axum::Router;
 use clap::{Parser, ValueHint};
