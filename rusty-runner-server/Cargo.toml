@@ -10,12 +10,17 @@ workspace = true
 # -- Internal
 rusty-runner-api = { version = "2.0.0", path = "../" }
 # -- Async
-tokio = { version = "1.37.0", features = ["fs", "process", "signal"] }
+tokio = { version = "1.37.0", features = [
+    "fs",
+    "process",
+    "signal",
+    "rt-multi-thread",
+] }
 # -- Serde
-serde = { version = "1.0.202", features = ["derive"]}
+serde = { version = "1.0.202", features = ["derive"] }
 # -- Web
 axum = "0.7.5"
-tower-http = {version = "0.5.2", features = ["fs", "trace"] }
+tower-http = { version = "0.5.2", features = ["fs", "trace"] }
 # -- Logging
 log = { version = "0.4.21", features = ["kv"] }
 env_logger = { version = "0.11.3", features = ["unstable-kv"] }

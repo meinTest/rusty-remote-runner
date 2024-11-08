@@ -10,7 +10,12 @@ pub fn working_directory() -> PathBuf {
     path
 }
 
-pub async fn process(id: u64, mut command: Command, return_logs: bool) -> RunResponse {
+pub async fn process(
+    id: u64,
+    mut command: Command,
+    return_stdout: bool,
+    return_stderr: bool,
+) -> RunResponse {
     // Just run the command and wait for the completion.
     let start = Instant::now();
     let result = command.output().await;
@@ -29,11 +34,8 @@ pub async fn process(id: u64, mut command: Command, return_logs: bool) -> RunRes
                 status: RunStatus::Completed {
                     exit_code: out.status.code().unwrap_or(-1001),
                     time_taken,
-                    std_out_and_err: if return_logs {
-                        Some((out.stdout, out.stderr))
-                    } else {
-                        None
-                    },
+                    stderr: Some(out.stderr).filter(|_| return_stderr),
+                    stdout: Some(out.stdout).filter(|_| return_stdout),
                 },
             }
         }

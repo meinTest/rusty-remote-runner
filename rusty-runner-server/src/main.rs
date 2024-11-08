@@ -2,14 +2,13 @@ use axum::routing::get;
 use axum::Router;
 use clap::{Parser, ValueHint};
 use log::LevelFilter;
-use std::num::NonZeroU16;
 use tokio::signal;
 use tower_http::trace::TraceLayer;
 
 mod process;
 mod routes;
 
-#[tokio::main(flavor = "current_thread")] // single-threaded, multi requires rt-multi-thread feature
+#[tokio::main]
 async fn main() -> std::io::Result<()> {
     env_logger::builder()
         .filter_level(LevelFilter::Info)
@@ -22,7 +21,7 @@ async fn main() -> std::io::Result<()> {
 
     log::info!(
         version = env!("CARGO_PKG_VERSION"),
-        api_version =rusty_runner_api::api::VERSION;
+        api_version = rusty_runner_api::api::VERSION;
         "Initializing server"
     );
 
@@ -33,17 +32,14 @@ async fn main() -> std::io::Result<()> {
             .expect("Should be able to write to the temporary directory!");
     }
 
-    log::info!(path = "/api"; "nesting sub-routes");
     let router = Router::new()
         .nest("/api", routes::routes())
         .route("/health", get(|| async { "OK" }))
         .layer(TraceLayer::new_for_http());
 
-    let addr = format!("{host}:{port}");
-    let listener = tokio::net::TcpListener::bind(addr).await?;
+    let listener = tokio::net::TcpListener::bind((host, port)).await?;
     log::info!(
-        addr:display = host,
-        port = port;
+        on:debug = listener.local_addr();
         "listening to TCP"
     );
 
@@ -64,7 +60,7 @@ struct CliArgs {
         env = "RUSTY_RUNNER_HOST",
     )]
     host: String,
-    /// The host port for the rusty-runner server.
+    /// The host port for the rusty-runner server. 0 means it will pick any free port.
     #[arg(
         short,
         long,
@@ -73,7 +69,7 @@ struct CliArgs {
         default_value = "8000",
         env = "RUSTY_RUNNER_PORT",
     )]
-    port: NonZeroU16,
+    port: u16,
 }
 
 async fn shutdown_signal() {

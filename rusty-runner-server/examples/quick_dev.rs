@@ -1,4 +1,4 @@
-use rusty_runner_api::api::{RunRequest, RunResponse, RunStatus};
+use rusty_runner_api::api::{RunResponse, RunStatus};
 use serde_json::{json, Value};
 
 const URL: &str = "http://localhost:8000";
@@ -13,8 +13,7 @@ async fn main() -> anyhow::Result<()> {
     response.print().await?;
     let json: RunResponse = serde_json::from_value(response.json_body()?)?;
     if let RunStatus::Completed {
-        std_out_and_err: Some((out, _)),
-        ..
+        stdout: Some(out), ..
     } = json.status
     {
         println!("PWD: {}", String::from_utf8(out)?);

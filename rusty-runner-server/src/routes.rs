@@ -2,7 +2,7 @@ use crate::process::{process, working_directory};
 use axum::extract::Query;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
-use axum::routing::{get, get_service, post, MethodRouter};
+use axum::routing::{get, get_service, post};
 use axum::{Json, Router};
 use rusty_runner_api::api::{
     InfoResponse, OsType, RunRequest, RunResponse, RunScriptQuery, RunStatus, ScriptInterpreter,
@@ -11,12 +11,18 @@ use rusty_runner_api::api::{
 use tokio::process::Command;
 use tower_http::services::ServeDir;
 
+// Sanity check that our conditional compilation won't break with weird error messages.
+#[cfg(all(windows, unix))]
+compile_error!("Unix and Windows are exclusive!");
+#[cfg(not(any(windows, unix)))]
+compile_error!("Either Unix or Windows must be targeted!");
+
 pub fn routes() -> Router {
     Router::new()
-        .route_logged("/info", get(info))
-        .route_logged("/run", post(run_command))
-        .route_logged("/runscript", post(run_script))
-        .nest_service_logged("/file", get_service(ServeDir::new(working_directory())))
+        .route("/info", get(info))
+        .route("/run", post(run_command))
+        .route("/runscript", post(run_script))
+        .nest_service("/file", get_service(ServeDir::new(working_directory())))
 }
 
 async fn info() -> Json<InfoResponse> {
@@ -45,7 +51,7 @@ async fn run_command(Json(request): Json<RunRequest>) -> Json<RunResponse> {
     command.current_dir(working_directory());
     command.args(request.arguments);
 
-    let response = process(id, command, request.return_logs).await;
+    let response = process(id, command, request.return_stdout, request.return_stderr).await;
     Json(response)
 }
 
@@ -108,25 +114,6 @@ async fn run_script(Query(query): Query<RunScriptQuery>, script: String) -> impl
 
     command.current_dir(working_directory());
 
-    let response = process(id, command, query.return_logs).await;
+    let response = process(id, command, query.return_stdout, query.return_stderr).await;
     Json(response).into_response()
-}
-
-trait LoggedExt {
-    /// [`Router::route`] and log which sub-route is being added to the router.
-    fn route_logged(self, path: &str, method_router: MethodRouter) -> Self;
-    /// [`Router::nest_service`] and log which nested service is being added to the router.
-    fn nest_service_logged(self, path: &str, method_router: MethodRouter) -> Self;
-}
-
-impl LoggedExt for Router {
-    fn route_logged(self, path: &str, method_router: MethodRouter) -> Self {
-        log::info!(path; "adding sub-route");
-        self.route(path, method_router)
-    }
-
-    fn nest_service_logged(self, path: &str, method_router: MethodRouter) -> Self {
-        log::info!(path; "adding nested service");
-        self.nest_service(path, method_router)
-    }
 }
