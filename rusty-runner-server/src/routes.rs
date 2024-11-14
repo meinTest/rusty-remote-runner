@@ -17,6 +17,7 @@ compile_error!("Unix and Windows are exclusive!");
 #[cfg(not(any(windows, unix)))]
 compile_error!("Either Unix or Windows must be targeted!");
 
+/// Routes under `/api`.
 pub fn routes() -> Router {
     Router::new()
         .route("/info", get(info))

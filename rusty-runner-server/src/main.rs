@@ -1,6 +1,6 @@
 //! Runs a server complying with the [`rusty_runner_api`].
 //!
-//! Listens on `localhost:8000` unless changed by the [`CliArgs`].
+//! Listens on `http://localhost:8000`, e.g. `http://localhost:8000/api/info` unless changed by the [`CliArgs`].
 //! The working directory is determined by [`{std::env::temp_dir()}/rusty-runner`][process::working_directory].
 
 use axum::routing::get;
@@ -53,6 +53,10 @@ async fn main() -> std::io::Result<()> {
         .await
 }
 
+/// Runs a server complying with the `rusty_runner_api`.
+///
+/// By default listens on `http://localhost:8000`, e.g. `http://localhost:8000/api/info` unless changed by the command line arguments.
+/// The working directory is determined by `{std::env::temp_dir()}/rusty-runner`.
 #[derive(Parser)]
 struct CliArgs {
     /// The host address for the rusty-runner server.
