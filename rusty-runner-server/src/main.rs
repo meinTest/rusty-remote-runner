@@ -98,6 +98,7 @@ struct CliArgs {
     bash_path: Option<PathBuf>,
     /// The path of the powershell interpreter. If not set, powershell scripts are not supported.
     /// Can be just the name of the binary if it is in the PATH.
+    /// On unix this is often `pwsh`, while windows uses `powershell`.
     #[arg(
         long,
         value_name = "PATH",

@@ -21,7 +21,10 @@ fn spawn_server() -> anyhow::Result<(Child, Client)> {
                 "bash"
             },
         ])
-        .args(["--powershell-path", r"powershell"])
+        .args([
+            "--powershell-path",
+            if cfg!(windows) { "powershell" } else { "pwsh" },
+        ])
         .spawn()
         .expect("Couldn't spawn server");
     let hc = httpc_test::new_client(format!("http://localhost:{port}"))?;
