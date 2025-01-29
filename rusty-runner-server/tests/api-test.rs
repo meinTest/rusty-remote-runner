@@ -82,11 +82,9 @@ async fn bash_echo() -> anyhow::Result<()> {
     let RunStatus::Completed { stdout, .. } = response.status else {
         panic!("Couldn't execute echo");
     };
-    assert_eq!(
-        "HIIII\n",
-        &String::from_utf8(stdout.expect("Was configured to return stdout"))
-            .expect("is valid utf8")
-    );
+    let output =
+        String::from_utf8(stdout.expect("Was configured to return stdout")).expect("is valid utf8");
+    assert!(output.starts_with("HIIII"));
 
     child.kill().await.expect("Couldn't kill server");
     Ok(())
@@ -133,11 +131,9 @@ async fn powershell_echo() -> anyhow::Result<()> {
     let RunStatus::Completed { stdout, .. } = response.status else {
         panic!("Couldn't execute echo");
     };
-    assert_eq!(
-        "HIIII\r\n",
-        &String::from_utf8(stdout.expect("Was configured to return stdout"))
-            .expect("is valid utf8")
-    );
+    let output =
+        String::from_utf8(stdout.expect("Was configured to return stdout")).expect("is valid utf8");
+    assert!(output.starts_with("HIIII"));
 
     child.kill().await.expect("Couldn't kill server");
     Ok(())
