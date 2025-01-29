@@ -110,6 +110,7 @@ pub struct RunScriptQuery {
 #[serde(rename_all = "lowercase")]
 pub enum ScriptInterpreter {
     Bash,
+    /// Cmd.exe is outdated and powershell should be preferred.
     Cmd,
     Powershell,
 }

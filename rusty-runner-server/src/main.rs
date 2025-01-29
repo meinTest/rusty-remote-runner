@@ -2,11 +2,14 @@
 //!
 //! Listens on `http://localhost:8000`, e.g. `http://localhost:8000/api/info` unless changed by the [`CliArgs`].
 //! The working directory is determined by [`{std::env::temp_dir()}/rusty-runner`][process::working_directory].
+//!
+//! The paths to bash and powershell are configured in [`CliArgs`] and must be set to support the respective interpreters.
 
 use axum::routing::get;
 use axum::Router;
 use clap::{Parser, ValueHint};
 use log::LevelFilter;
+use std::path::PathBuf;
 use tokio::signal;
 use tower_http::trace::TraceLayer;
 
@@ -22,7 +25,7 @@ async fn main() -> std::io::Result<()> {
         .parse_default_env()
         .init();
 
-    let CliArgs { host, port } = CliArgs::parse();
+    let args = CliArgs::parse();
 
     log::info!(
         version = env!("CARGO_PKG_VERSION"),
@@ -37,12 +40,13 @@ async fn main() -> std::io::Result<()> {
             .expect("Should be able to write to the temporary directory!");
     }
 
+    // Setup the service
     let router = Router::new()
-        .nest("/api", routes::routes())
+        .nest("/api", routes::routes(args.bash_path, args.powershell_path))
         .route("/health", get(|| async { "OK" }))
         .layer(TraceLayer::new_for_http());
 
-    let listener = tokio::net::TcpListener::bind((host, port)).await?;
+    let listener = tokio::net::TcpListener::bind((args.host, args.port)).await?;
     log::info!(
         on:debug = listener.local_addr();
         "listening to TCP"
@@ -57,6 +61,8 @@ async fn main() -> std::io::Result<()> {
 ///
 /// By default listens on `http://localhost:8000`, e.g. `http://localhost:8000/api/info` unless changed by the command line arguments.
 /// The working directory is determined by `{std::env::temp_dir()}/rusty-runner`.
+///
+/// The paths to bash and powershell must be set to support the respective interpreters.
 #[derive(Parser)]
 struct CliArgs {
     /// The host address for the rusty-runner server.
@@ -79,6 +85,26 @@ struct CliArgs {
         env = "RUSTY_RUNNER_PORT",
     )]
     port: u16,
+    /// The path of the bash interpreter. If not set, bash scripts are not supported.
+    ///
+    /// Can be just the name of the binary if it is in the PATH.
+    /// *WARNING* on windows this misbehaves with a bare name. Use the full path, commonly `C:\Program Files\Git\bin\bash.exe` instead.
+    #[arg(
+        long,
+        value_name = "PATH",
+        value_hint = ValueHint::ExecutablePath,
+        env = "RUSTY_RUNNER_BASH",
+    )]
+    bash_path: Option<PathBuf>,
+    /// The path of the powershell interpreter. If not set, powershell scripts are not supported.
+    /// Can be just the name of the binary if it is in the PATH.
+    #[arg(
+        long,
+        value_name = "PATH",
+        value_hint = ValueHint::ExecutablePath,
+        env = "RUSTY_RUNNER_POWERSHELL",
+    )]
+    powershell_path: Option<PathBuf>,
 }
 
 async fn shutdown_signal() {

@@ -1,13 +1,15 @@
 use crate::process::{process, working_directory};
-use axum::extract::Query;
+use axum::extract::{Query, State};
 use axum::http::StatusCode;
-use axum::response::IntoResponse;
+use axum::response::{IntoResponse, Response};
 use axum::routing::{get, get_service, post};
 use axum::{Json, Router};
 use rusty_runner_api::api::{
     InfoResponse, OsType, RunRequest, RunResponse, RunScriptQuery, RunStatus, ScriptInterpreter,
     VERSION,
 };
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use tokio::process::Command;
 use tower_http::services::ServeDir;
 
@@ -17,12 +19,22 @@ compile_error!("Unix and Windows are exclusive!");
 #[cfg(not(any(windows, unix)))]
 compile_error!("Either Unix or Windows must be targeted!");
 
+#[derive(Debug, Clone)]
+struct Config {
+    bash_path: Option<Arc<Path>>,
+    powershell_path: Option<Arc<Path>>,
+}
+
 /// Routes under `/api`.
-pub fn routes() -> Router {
+pub fn routes(bash_path: Option<PathBuf>, powershell_path: Option<PathBuf>) -> Router {
     Router::new()
         .route("/info", get(info))
         .route("/run", post(run_command))
         .route("/runscript", post(run_script))
+        .with_state(Config {
+            bash_path: bash_path.map(Into::into),
+            powershell_path: powershell_path.map(Into::into),
+        })
         .nest_service("/file", get_service(ServeDir::new(working_directory())))
 }
 
@@ -56,7 +68,11 @@ async fn run_command(Json(request): Json<RunRequest>) -> Json<RunResponse> {
     Json(response)
 }
 
-async fn run_script(Query(query): Query<RunScriptQuery>, script: String) -> impl IntoResponse {
+async fn run_script(
+    State(config): State<Config>,
+    Query(query): Query<RunScriptQuery>,
+    script: String,
+) -> Response {
     let id = fastrand::u64(..);
     let interpreter = query.interpreter;
     log::info!(id; "received script");
@@ -71,45 +87,53 @@ async fn run_script(Query(query): Query<RunScriptQuery>, script: String) -> impl
         log::error!(id; "failed to write script data: {e}");
         return (
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(RunResponse {
-                id,
-                status: RunStatus::Failure {
-                    reason: String::from("Failed to write script data"),
-                },
-            }),
+            Json(failure_response(id, "Failed to write script data")),
         )
             .into_response();
     }
 
-    // TODO: executable flag & add unix support
+    // FIXME: test on unix.
     let mut command = match interpreter {
         ScriptInterpreter::Bash => {
-            #[cfg(windows)]
-            // TODO: config for bash install path
-            let mut command = Command::new(r"C:\Program Files\Git\bin\bash.exe");
-            #[cfg(unix)]
-            let mut command = Command::new("bash");
+            let Some(bash) = config.bash_path else {
+                log::warn!(id; "interpreter {interpreter:?} not configured");
+                return (
+                    StatusCode::BAD_REQUEST,
+                    Json(failure_response(id, "Bash not supported")),
+                )
+                    .into_response();
+            };
+            let mut command = Command::new(bash.as_ref());
+            command.arg("--");
             command.arg(&script_path);
+            // `bash -- {file}`.
             command
         }
-        #[cfg(windows)]
-        ScriptInterpreter::Cmd | ScriptInterpreter::Powershell => {
-            // File ending determines the interpreter.
-            Command::new(script_path.as_os_str())
+        ScriptInterpreter::Powershell => {
+            let Some(powershell) = config.powershell_path else {
+                log::warn!(id; "interpreter {interpreter:?} not configured");
+                return (
+                    StatusCode::BAD_REQUEST,
+                    Json(failure_response(id, "Powershell not supported")),
+                )
+                    .into_response();
+            };
+            let mut command = Command::new(powershell.as_ref());
+            command.arg("-File");
+            command.arg(&script_path);
+            // `powershell -File {file}`.
+            command
         }
-        #[allow(unreachable_patterns)]
-        _ => {
-            log::error!(id; "interpreter {interpreter:?} not supported");
-            return (
-                StatusCode::BAD_REQUEST,
-                Json(RunResponse {
-                    id,
-                    status: RunStatus::Failure {
-                        reason: String::from("Interpreter not supported"),
-                    },
-                }),
-            )
-                .into_response();
+        ScriptInterpreter::Cmd => {
+            if !cfg!(windows) {
+                log::warn!(id; "Cmd script on unix");
+                return (
+                    StatusCode::BAD_REQUEST,
+                    Json(failure_response(id, "Cmd not supported on unix")),
+                )
+                    .into_response();
+            }
+            Command::new(script_path.as_os_str())
         }
     };
 
@@ -117,4 +141,13 @@ async fn run_script(Query(query): Query<RunScriptQuery>, script: String) -> impl
 
     let response = process(id, command, query.return_stdout, query.return_stderr).await;
     Json(response).into_response()
+}
+
+fn failure_response(id: u64, reason: impl Into<String>) -> RunResponse {
+    RunResponse {
+        id,
+        status: RunStatus::Failure {
+            reason: reason.into(),
+        },
+    }
 }
