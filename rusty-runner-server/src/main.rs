@@ -30,8 +30,10 @@ async fn main() -> std::io::Result<()> {
     log::info!(
         version = env!("CARGO_PKG_VERSION"),
         api_version = rusty_runner_api::api::VERSION;
-        "Initializing server"
+        "initializing server"
     );
+    log::info!(path:debug = args.powershell_path; "configured powershell");
+    log::info!(path:debug = args.bash_path; "configured bash");
 
     // Create the server working directory
     if !process::working_directory().exists() {
@@ -48,7 +50,7 @@ async fn main() -> std::io::Result<()> {
 
     let listener = tokio::net::TcpListener::bind((args.host, args.port)).await?;
     log::info!(
-        on:debug = listener.local_addr();
+        on:debug = listener.local_addr()?;
         "listening to TCP"
     );
 
