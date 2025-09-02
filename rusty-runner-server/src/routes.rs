@@ -136,10 +136,16 @@ async fn run_script(
             Command::new(script_path.as_os_str())
         }
     };
-
     command.current_dir(working_directory());
 
+    // Run the script
     let response = process(id, command, query.return_stdout, query.return_stderr).await;
+
+    // Delete the script file again
+    if let Err(e) = tokio::fs::remove_file(&script_path).await {
+        log::error!(id; "failed to write script data: {e}");
+    }
+
     Json(response).into_response()
 }
 
