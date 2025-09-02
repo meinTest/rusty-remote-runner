@@ -115,6 +115,7 @@ struct CliArgs {
     )]
     powershell_path: Option<PathBuf>,
     /// The maximum age for entries in the working directory, e.g. `1.5d` for 1.5 days.
+    /// Also supported suffixes: `w` for weeks, `h` for hours.
     #[arg(
         long,
         value_name = "DAYS",
@@ -124,6 +125,9 @@ struct CliArgs {
     )]
     cleanup_max_age: Option<std::time::Duration>,
     /// The maximum size for entries in the working directory, e.g. `2.5G` or `2.5GB` for 2.5 gigabytes.
+    /// Also supported suffixes: `M`/`MB` for megabytes, `T`/`TB` for terrabytes.
+    ///
+    /// Note that we use binary definitions of giga, i.e. 1GB = files sizes that amount to 1024^3 bytes
     #[arg(
         long,
         value_name = "GB",
