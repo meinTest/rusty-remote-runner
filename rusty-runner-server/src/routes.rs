@@ -143,7 +143,7 @@ async fn run_script(
 
     // Delete the script file again
     if let Err(e) = tokio::fs::remove_file(&script_path).await {
-        log::error!(id; "failed to write script data: {e}");
+        log::error!(id; "failed to delete script data: {e}");
     }
 
     Json(response).into_response()
