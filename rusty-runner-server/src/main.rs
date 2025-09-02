@@ -13,6 +13,7 @@ use std::path::PathBuf;
 use tokio::signal;
 use tower_http::trace::TraceLayer;
 
+mod cleanup;
 mod process;
 mod routes;
 
@@ -34,6 +35,8 @@ async fn main() -> std::io::Result<()> {
     );
     log::info!(path:debug = args.powershell_path; "configured powershell");
     log::info!(path:debug = args.bash_path; "configured bash");
+    log::info!(path:debug = args.cleanup_max_age; "configured age-based cleanup");
+    log::info!(path:debug = args.cleanup_max_size; "configured size-based cleanup");
 
     // Create the server working directory
     if !process::working_directory().exists() {
@@ -41,6 +44,9 @@ async fn main() -> std::io::Result<()> {
             .await
             .expect("Should be able to write to the temporary directory!");
     }
+
+    // Start cleaning up regularly
+    cleanup::start_cleanup_task(args.cleanup_max_age, args.cleanup_max_size);
 
     // Setup the service
     let router = Router::new()
@@ -108,6 +114,24 @@ struct CliArgs {
         env = "RUSTY_RUNNER_POWERSHELL",
     )]
     powershell_path: Option<PathBuf>,
+    /// The maximum age for entries in the working directory, e.g. `1.5d` for 1.5 days.
+    #[arg(
+        long,
+        value_name = "DAYS",
+        value_hint = ValueHint::Other,
+        env = "RUSTY_RUNNER_MAX_AGE",
+        value_parser = parse_duration
+    )]
+    cleanup_max_age: Option<std::time::Duration>,
+    /// The maximum size for entries in the working directory, e.g. `2.5G` or `2.5GB` for 2.5 gigabytes.
+    #[arg(
+        long,
+        value_name = "GB",
+        value_hint = ValueHint::Other,
+        env = "RUSTY_RUNNER_MAX_SIZE",
+        value_parser = parse_size
+    )]
+    cleanup_max_size: Option<usize>,
 }
 
 async fn shutdown_signal() {
@@ -131,5 +155,47 @@ async fn shutdown_signal() {
     tokio::select! {
         () = ctrl_c => log::info!("received SIGINT (ctrl+c), shutting down"),
         () = terminate => log::info!("received SIGTERM, shutting down"),
+    }
+}
+
+fn parse_suffixed_num(s: &str) -> Result<(f32, String), String> {
+    let (num, unit): (String, String) = s.chars().partition(|c| !c.is_alphabetic());
+
+    let num: f32 = num
+        .trim()
+        .parse()
+        .map_err(|_| format!("Invalid number: {num}"))?;
+    if num.is_finite() {
+        Ok((num, unit))
+    } else {
+        Err("Number non-finite".to_string())
+    }
+}
+fn parse_duration(s: &str) -> Result<std::time::Duration, String> {
+    let (num, unit) = parse_suffixed_num(s)?;
+    if num < 0.0 {
+        return Err("Duration cannot be negative".to_string());
+    }
+    match unit.trim().to_ascii_uppercase().as_str() {
+        "H" => Ok(std::time::Duration::from_secs_f32(num * 60. * 60.)),
+        "D" => Ok(std::time::Duration::from_secs_f32(num * 24. * 60. * 60.)),
+        "W" => Ok(std::time::Duration::from_secs_f32(
+            num * 7. * 24. * 60. * 60.,
+        )),
+        _ => Err(format!("Invalid unit for duration: {unit}")),
+    }
+}
+#[allow(clippy::cast_sign_loss)] // checked against
+#[allow(clippy::cast_possible_truncation)] // won't reasonably happen
+fn parse_size(s: &str) -> Result<usize, String> {
+    let (num, unit) = parse_suffixed_num(s)?;
+    if num < 0.0 {
+        return Err("Size cannot be negative".to_string());
+    }
+    match unit.trim().to_ascii_uppercase().as_str() {
+        "M" | "MB" => Ok((num * 1024.0 * 1024.0).round() as usize),
+        "G" | "GB" => Ok((num * 1024.0 * 1024.0 * 1024.0).round() as usize),
+        "T" | "TB" => Ok((num * 1024.0 * 1024.0 * 1024.0 * 1024.0).round() as usize),
+        _ => Err(format!("Invalid unit for size: {unit}")),
     }
 }
