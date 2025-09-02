@@ -2,6 +2,7 @@
 name = "rusty-runner-server"
 version = "0.4.1"
 edition = "2021"
+publish = false
 
 [lints]
 workspace = true
