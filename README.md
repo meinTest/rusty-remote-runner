@@ -1,5 +1,9 @@
 # rusty-runner-api
 
+> [!WARNING]
+> This API has now been deprecated by us, and instead we directly use the taumada API.
+
+
 This crate serves purely as an rest api abstraction for a remote script execution server.
 Additionally there is a canonical server implementation in the same repository.
 
